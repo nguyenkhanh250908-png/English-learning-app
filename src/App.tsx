@@ -139,34 +139,49 @@ export function App() {
   };
 
   const toggleMastered = (wordId: string, mastered: boolean) => {
+    const targetWord = VOCABULARY_LIST.find((w) => w.id === wordId);
+    const relatedIds = targetWord
+      ? VOCABULARY_LIST.filter(
+          (w) => w.english.trim().toLowerCase() === targetWord.english.trim().toLowerCase()
+        ).map((w) => w.id)
+      : [wordId];
+    
     setStats((prev) => {
-      const isAlreadyMastered = prev.masteredWords.includes(wordId);
-      const isAlreadyLearned = prev.learnedWords.includes(wordId);
-
+      const isAlreadyMastered = relatedIds.some((id) => prev.masteredWords.includes(id));
       let newMastered = [...prev.masteredWords];
-      let newLearned = isAlreadyLearned ? prev.learnedWords : [...prev.learnedWords, wordId];
+      let newLearned = [...prev.learnedWords];
 
-      if (mastered && !isAlreadyMastered) {
-        newMastered.push(wordId);
-      } else if (!mastered && isAlreadyMastered) {
-        newMastered = newMastered.filter((id) => id !== wordId);
+      if (mastered) {
+        for (const id of relatedIds) {
+          if (!newMastered.includes(id)) newMastered.push(id);
+          if (!newLearned.includes(id)) newLearned.push(id);
+        }
+      } else {
+        newMastered = newMastered.filter((id) => !relatedIds.includes(id));
       }
 
       return {
         ...prev,
         masteredWords: newMastered,
         learnedWords: newLearned,
-        dailyGoalCurrent: Math.min(prev.dailyGoalCurrent + 1, prev.dailyGoalTarget),
+        dailyGoalCurrent: mastered && !isAlreadyMastered ? Math.min(prev.dailyGoalCurrent + 1, prev.dailyGoalTarget) : prev.dailyGoalCurrent,
       };
     });
   };
 
   const toggleBookmark = (wordId: string) => {
+    const targetWord = VOCABULARY_LIST.find((w) => w.id === wordId);
+    const relatedIds = targetWord
+      ? VOCABULARY_LIST.filter(
+          (w) => w.english.trim().toLowerCase() === targetWord.english.trim().toLowerCase()
+        ).map((w) => w.id)
+      : [wordId];
+
     setStats((prev) => {
-      const isBookmarked = prev.bookmarkedWords.includes(wordId);
+      const isBookmarked = relatedIds.some((id) => prev.bookmarkedWords.includes(id));
       const newBookmarks = isBookmarked
-        ? prev.bookmarkedWords.filter((id) => id !== wordId)
-        : [...prev.bookmarkedWords, wordId];
+        ? prev.bookmarkedWords.filter((id) => !relatedIds.includes(id))
+        : [...prev.bookmarkedWords, ...relatedIds.filter((id) => !prev.bookmarkedWords.includes(id))];
       return {
         ...prev,
         bookmarkedWords: newBookmarks,
