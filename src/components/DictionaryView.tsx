@@ -13,14 +13,25 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({ vocabulary, lang
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
+  const uniqueVocabulary = useMemo(() => {
+    const seenWords = new Set<string>();
+
+    return vocabulary.filter((word) => {
+      const normalizedWord = `${word.category}:${word.english.trim().replace(/\s+/g, ' ').toLocaleLowerCase()}`;
+      if (seenWords.has(normalizedWord)) return false;
+      seenWords.add(normalizedWord);
+      return true;
+    });
+  }, [vocabulary]);
+
   const categories = useMemo(
-    () => ['All', ...Array.from(new Set(vocabulary.map((word) => word.category))).sort()],
-    [vocabulary],
+    () => ['All', ...Array.from(new Set(uniqueVocabulary.map((word) => word.category))).sort()],
+    [uniqueVocabulary],
   );
 
   const filteredWords = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase();
-    return vocabulary.filter((word) => {
+    return uniqueVocabulary.filter((word) => {
       const matchesCategory = selectedCategory === 'All' || word.category === selectedCategory;
       const matchesQuery =
         !query ||
@@ -29,7 +40,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({ vocabulary, lang
         word.category.toLocaleLowerCase().includes(query);
       return matchesCategory && matchesQuery;
     });
-  }, [vocabulary, searchQuery, selectedCategory]);
+  }, [uniqueVocabulary, searchQuery, selectedCategory]);
 
   return (
     <section className="max-w-5xl mx-auto py-4 space-y-6">
