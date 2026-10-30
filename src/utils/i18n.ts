@@ -44,8 +44,8 @@ export const translations = {
 
     // Drag and Drop Match Game
     matchingTitle: 'Trò chơi Ghép từ Kéo & Thả',
-    matchingSubtitle: 'Kéo các thẻ từ tiếng Anh bên trái và thả vào đúng ô nghĩa tiếng Việt tương ứng bên phải!',
-    matchingInstruction: 'Kéo thả từ hoặc nhấp chọn để ghép cặp từ vựng chính xác.',
+    matchingSubtitle: 'Kéo các thẻ từ tiếng Anh vào ô nghĩa bất kỳ, sau đó kiểm tra đáp án.',
+    matchingInstruction: 'Đặt các từ vào ô nghĩa, rồi nhấn “Kiểm tra đáp án” để xem kết quả.',
     matchedCountLabel: 'Cặp từ đã ghép đúng',
     btnPlayAgain: 'Chơi ván mới',
     matchingSuccessHeading: 'Tuyệt đỉnh! Bạn đã ghép đúng tất cả các cặp từ!',
@@ -90,7 +90,6 @@ export const translations = {
     noWordsDesc: 'Hãy thử đổi bộ lọc hoặc từ khóa tìm kiếm để khám phá thêm từ mới!',
     btnResetFilters: 'Đặt lại bộ lọc',
     cardCount: 'Thẻ',
-    startWithCard: 'Bắt đầu từ:',
     of: 'trên',
     btnAutoplay: 'Tự động chạy',
     btnPlaying: 'Đang chạy',
@@ -283,8 +282,8 @@ export const translations = {
     dictionarySourceNote: 'Lookups open on Oxford Learner’s Dictionaries. Dictionary content belongs to Oxford University Press.',
 
     matchingTitle: 'Drag & Drop Word Matcher',
-    matchingSubtitle: 'Drag the English word tiles on the left into their corresponding Vietnamese definition slots on the right!',
-    matchingInstruction: 'Drag & drop or click to pair up correct words.',
+    matchingSubtitle: 'Drag the English word tiles into any meaning slot, then check your answers.',
+    matchingInstruction: 'Place words in the meaning slots, then click “Check Answer” to see how you did.',
     matchedCountLabel: 'Pairs Matched',
     btnPlayAgain: 'Play New Round',
     matchingSuccessHeading: 'Brilliant! You matched all word pairs!',
@@ -327,7 +326,6 @@ export const translations = {
     noWordsDesc: 'Try resetting your filters or search term to discover more beginner vocabulary!',
     btnResetFilters: 'Reset Filters',
     cardCount: 'Card',
-    startWithCard: 'Start with:',
     of: 'of',
     btnAutoplay: 'Autoplay',
     btnPlaying: 'Playing',
