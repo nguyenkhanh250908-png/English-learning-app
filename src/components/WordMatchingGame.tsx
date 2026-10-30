@@ -4,6 +4,7 @@ import { translations, Language } from '../utils/i18n';
 import {
   GripVertical,
   CheckCircle2,
+  XCircle,
   Volume2,
   RotateCcw,
   Sparkles,
@@ -51,8 +52,10 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
   const [pairs, setPairs] = useState<MatchPair[]>([]);
   // Shuffled right-side definition slots
   const [slots, setSlots] = useState<MatchPair[]>([]);
-  // Track matched slotId -> wordId
-  const [matches, setMatches] = useState<Record<string, string>>({});
+  // Track placed slotId -> wordId and pairs confirmed correct by the user
+  const [placements, setPlacements] = useState<Record<string, string>>({});
+  const [correctMatches, setCorrectMatches] = useState<Record<string, string>>({});
+  const [hasCheckedPlacements, setHasCheckedPlacements] = useState(false);
   // Dragging state
   const [draggedWordId, setDraggedWordId] = useState<string | null>(null);
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null);
@@ -78,7 +81,9 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
     setPairs(selected);
     // Shuffle slots on the right
     setSlots([...selected].sort(() => 0.5 - Math.random()));
-    setMatches({});
+    setPlacements({});
+    setCorrectMatches({});
+    setHasCheckedPlacements(false);
     setDraggedWordId(null);
     setDragOverSlotId(null);
     setSelectedWordId(null);
@@ -125,32 +130,15 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
     }
   };
 
-  const attemptMatch = (wordId: string, slotId: string) => {
-    // If slot is already matched, ignore
-    if (matches[slotId]) return;
-
-    // Check if wordId matches slotId (target)
-    if (wordId === slotId) {
-      // Correct Match!
-      playSuccessChime();
-      const newMatches = { ...matches, [slotId]: wordId };
-      setMatches(newMatches);
-      onAddXP(5);
-
-      // Check if all matched
-      if (Object.keys(newMatches).length === pairs.length) {
-        setIsCompleted(true);
-        setTimeout(() => {
-          playStreakFanfare();
-          triggerCelebration();
-          onAddXP(25);
-        }, 300);
-      }
-    } else {
-      // Incorrect Match
-      playErrorBuzz();
-    }
-
+  const placeWord = (wordId: string, slotId: string) => {
+    if (correctMatches[slotId] || Object.values(correctMatches).includes(wordId)) return;
+    const updatedPlacements = Object.fromEntries(
+      Object.entries(placements).filter(([placedSlotId, placedWordId]) =>
+        placedSlotId !== slotId && placedWordId !== wordId && !correctMatches[placedSlotId],
+      ),
+    );
+    setPlacements({ ...updatedPlacements, [slotId]: wordId });
+    setHasCheckedPlacements(false);
     setDraggedWordId(null);
     setDragOverSlotId(null);
     setSelectedWordId(null);
@@ -160,14 +148,13 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
     e.preventDefault();
     const droppedWordId = e.dataTransfer.getData('text/plain') || draggedWordId;
     if (droppedWordId) {
-      attemptMatch(droppedWordId, slotId);
+      placeWord(droppedWordId, slotId);
     }
   };
 
   // Click-to-pair fallback
   const handleClickWord = (wordId: string) => {
-    // Check if already matched
-    if (Object.values(matches).includes(wordId)) return;
+    if (Object.values(correctMatches).includes(wordId)) return;
     playPop();
     if (selectedWordId === wordId) {
       setSelectedWordId(null);
@@ -177,13 +164,41 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
   };
 
   const handleClickSlot = (slotId: string) => {
-    if (matches[slotId]) return;
+    if (correctMatches[slotId]) return;
     if (selectedWordId) {
-      attemptMatch(selectedWordId, slotId);
+      placeWord(selectedWordId, slotId);
     }
   };
 
-  const matchedCount = Object.keys(matches).length;
+  const handleCheckPlacements = () => {
+    const newlyCorrectMatches = Object.fromEntries(
+      Object.entries(placements).filter(([slotId, wordId]) => slotId === wordId),
+    );
+    const newlyCorrectCount = Object.keys(newlyCorrectMatches).filter(
+      (slotId) => !correctMatches[slotId],
+    ).length;
+    const updatedCorrectMatches = { ...correctMatches, ...newlyCorrectMatches };
+
+    setCorrectMatches(updatedCorrectMatches);
+    setHasCheckedPlacements(true);
+    if (newlyCorrectCount > 0) {
+      playSuccessChime();
+      onAddXP(newlyCorrectCount * 5);
+    } else {
+      playErrorBuzz();
+    }
+
+    if (Object.keys(updatedCorrectMatches).length === pairs.length) {
+      setIsCompleted(true);
+      setTimeout(() => {
+        playStreakFanfare();
+        triggerCelebration();
+        onAddXP(25);
+      }, 300);
+    }
+  };
+
+  const matchedCount = Object.keys(correctMatches).length;
 
   return (
     <div className="max-w-4xl mx-auto py-4 space-y-6">
@@ -246,7 +261,7 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
 
           <div className="space-y-3">
             {pairs.map((item) => {
-              const isMatched = Object.values(matches).includes(item.id);
+              const isMatched = Object.values(correctMatches).includes(item.id);
               const isSelected = selectedWordId === item.id;
               const isDragging = draggedWordId === item.id;
 
@@ -302,8 +317,9 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
 
           <div className="space-y-3">
             {slots.map((slot) => {
-              const matchedWordId = matches[slot.id];
-              const isMatched = !!matchedWordId;
+              const matchedWordId = placements[slot.id];
+              const isMatched = !!correctMatches[slot.id];
+              const isIncorrect = hasCheckedPlacements && !!matchedWordId && !isMatched;
               const matchedWord = pairs.find((p) => p.id === matchedWordId);
               const isHovered = dragOverSlotId === slot.id;
 
@@ -317,6 +333,8 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
                   className={`p-4 rounded-2xl border-2 transition-all duration-200 flex items-center justify-between min-h-[72px] ${
                     isMatched
                       ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 shadow-sm'
+                      : isIncorrect
+                      ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-500 shadow-sm'
                       : isHovered
                       ? 'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-600 border-dashed ring-4 ring-indigo-400/30 scale-102'
                       : selectedWordId
@@ -332,8 +350,12 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
                       {slot.translation}
                     </p>
 
-                    {isMatched && matchedWord && (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">
+                   {matchedWord && (
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-extrabold mt-1 ${
+                        isIncorrect
+                          ? 'text-rose-700 dark:text-rose-300'
+                          : 'text-emerald-700 dark:text-emerald-300'
+                      }`}>
                         &rarr; {matchedWord.english} ({matchedWord.phonetic})
                       </span>
                     )}
@@ -342,6 +364,8 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
                   <div className="shrink-0">
                     {isMatched ? (
                       <CheckCircle2 className="w-6 h-6 text-emerald-500 animate-in zoom-in" />
+                    ) : isIncorrect ? (
+                      <XCircle className="w-6 h-6 text-rose-500 animate-in zoom-in" />
                     ) : isHovered ? (
                       <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 animate-pulse">
                         Thả tại đây
@@ -363,6 +387,23 @@ export const WordMatchingGame: React.FC<WordMatchingGameProps> = ({
         </div>
       </div>
 
+      {!isCompleted && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              playPop();
+              handleCheckPlacements();
+            }}
+            disabled={Object.keys(placements).length === 0}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md shadow-indigo-600/25 transition"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{t.btnCheckAnswer}</span>
+          </button>
+        </div>
+      )}
+      
       {/* Completion Modal / Card */}
       {isCompleted && (
         <div className="p-6 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 dark:from-emerald-950/70 dark:via-teal-950/60 dark:to-indigo-950/70 border border-emerald-300 dark:border-emerald-800 text-center space-y-4 shadow-xl animate-in zoom-in duration-300">
