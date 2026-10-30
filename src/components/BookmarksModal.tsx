@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { VocabWord, UserStats } from '../types';
 import { translations, Language } from '../utils/i18n';
 import {
@@ -32,12 +32,20 @@ export const BookmarksModal: React.FC<BookmarksModalProps> = ({
 }) => {
   const t = translations[lang];
 
+  const bookmarkedWords = useMemo(() => {
+    const seen = new Set<string>();
+    return vocabulary
+      .filter((w) => stats.bookmarkedWords.includes(w.id))
+      .filter((w) => {
+        const key = w.english.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [vocabulary, stats.bookmarkedWords]);
+
   if (!isOpen) return null;
-
-  const bookmarkedWords = vocabulary.filter((w) =>
-    stats.bookmarkedWords.includes(w.id)
-  );
-
+ 
   const handlePlayWord = (word: string) => {
     playPop();
     speakText(word, {
