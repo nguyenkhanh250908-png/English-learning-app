@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { VocabWord, UserStats } from '../types';
 import { translations, Language } from '../utils/i18n';
 import {
@@ -18,6 +18,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { speakText, playPop, playSuccessChime } from '../utils/audio';
+
+const normalizeWord = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
 
 interface FlashcardViewProps {
   vocabulary: VocabWord[];
@@ -75,27 +77,73 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
   };
 
-  // Filter words
-  const filteredWords = vocabulary.filter((word) => {
-    // Category match
-    const matchesCat = selectedCategory === 'All' || word.category === selectedCategory;
+  // Cross-reference mastery and bookmarks by English word
+  const masteredWordKeys = useMemo(() => {
+    const masteredIds = new Set(stats.masteredWords);
+    const keys = new Set<string>();
+    for (const w of vocabulary) {
+      if (masteredIds.has(w.id)) {
+        keys.add(normalizeWord(w.english));
+      }
+    }
+    return keys;
+  }, [stats.masteredWords, vocabulary]);
+  
+  const bookmarkedWordKeys = useMemo(() => {
+    const bookmarkedIds = new Set(stats.bookmarkedWords);
+    const keys = new Set<string>();
+    for (const w of vocabulary) {
+      if (bookmarkedIds.has(w.id)) {
+        keys.add(normalizeWord(w.english));
+      }
+    }
+    return keys;
+  }, [stats.bookmarkedWords, vocabulary]);
+  
+  // Filter words and deduplicate so each unique word appears only 1 time
+  const filteredWords = useMemo(() => {
+    const seenWords = new Set<string>();
+    
+    return vocabulary.filter((word) => {
+      // Category match
+      const matchesCat = selectedCategory === 'All' || word.category === selectedCategory;
+      if (!matchesCat) return false;
 
-    // Search query match
-    const matchesSearch =
-      word.english.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      word.translation.toLowerCase().includes(searchQuery.toLowerCase());
+      // Search query match
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        word.english.toLowerCase().includes(query) ||
+        word.translation.toLowerCase().includes(query);
+      if (!matchesSearch) return false;
 
-    // Status filter match
-    const isMastered = stats.masteredWords.includes(word.id);
-    const isBookmarked = stats.bookmarkedWords.includes(word.id);
-
-    let matchesStatus = true;
-    if (filterType === 'mastered') matchesStatus = isMastered;
-    if (filterType === 'unmastered') matchesStatus = !isMastered;
-    if (filterType === 'bookmarked') matchesStatus = isBookmarked;
-
-    return matchesCat && matchesSearch && matchesStatus;
-  });
+      // Status filter match
+      const wordKey = normalizeWord(word.english);
+      const isMastered = stats.masteredWords.includes(word.id) || masteredWordKeys.has(wordKey);
+      const isBookmarked = stats.bookmarkedWords.includes(word.id) || bookmarkedWordKeys.has(wordKey);
+      let matchesStatus = true;
+      
+      if (filterType === 'mastered') matchesStatus = isMastered;
+      if (filterType === 'unmastered') matchesStatus = !isMastered;
+      if (filterType === 'bookmarked') matchesStatus = isBookmarked;
+      if (!matchesStatus) return false;
+      
+      // Ensure each word appears only 1 time in the flashcards
+      if (seenWords.has(wordKey)) return false;
+      seenWords.add(wordKey);
+      
+      return true;
+    });
+  }, [
+    vocabulary,
+    selectedCategory,
+    searchQuery,
+    filterType,
+    stats.masteredWords,
+    stats.bookmarkedWords,
+    masteredWordKeys,
+    bookmarkedWordKeys,
+  ]);
 
   const wordOrder = new Map(shuffledWordIds?.map((id, index) => [id, index]));
   const orderedWords = shuffledWordIds
@@ -107,6 +155,14 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   // Safe index
   const activeWord = orderedWords[currentIndex] || orderedWords[0];
 
+  const isCurrentWordMastered = activeWord
+    ? stats.masteredWords.includes(activeWord.id) || masteredWordKeys.has(normalizeWord(activeWord.english))
+    : false;
+  const isCurrentWordBookmarked = activeWord
+    ? stats.bookmarkedWords.includes(activeWord.id) || bookmarkedWordKeys.has(normalizeWord(activeWord.english))
+    : false;
+
+  
   // Reset index when filters change
   useEffect(() => {
     setCurrentIndex(0);
@@ -156,15 +212,6 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
   };
 
-  const handleSelectCard = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    playPop();
-    setCurrentIndex(Number(event.target.value));
-    setIsFlipped(false);
-    setTypedAnswer('');
-    setHasCheckedAnswer(false);
-    setIsTypedAnswerCorrect(false);
-  };
-
   const handleShuffle = () => {
     playPop();
     if (orderedWords.length > 1) {
@@ -200,7 +247,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     setHasCheckedAnswer(true);
     if (correct) {
       playSuccessChime();
-      if (!stats.masteredWords.includes(activeWord.id)) {
+      if (!isCurrentWordMastered) {
         onToggleMastered(activeWord.id, true);
       }
     } else {
@@ -231,7 +278,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   const handleMarkMastered = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!activeWord) return;
-    const isCurrentlyMastered = stats.masteredWords.includes(activeWord.id);
+    const isCurrentlyMastered = isCurrentWordMastered;
     onToggleMastered(activeWord.id, !isCurrentlyMastered);
 
     if (!isCurrentlyMastered) {
@@ -384,22 +431,8 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                   {getCategoryLabel(activeWord.category)}
                 </span>
               </div>
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <span>{t.startWithCard}</span>
-                <select
-                  value={currentIndex}
-                  onChange={handleSelectCard}
-                  className="max-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {orderedWords.map((word, index) => (
-                    <option key={word.id} value={index}>
-                      {word.english} — {word.translation}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
-
+              
             <div className="flex items-center gap-2">
               {/* Autoplay Slideshow */}
               <button
@@ -445,7 +478,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                     <span className="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
                       {activeWord.partOfSpeech}
                     </span>
-                    {stats.masteredWords.includes(activeWord.id) && (
+                    {isCurrentWordMastered && (
                       <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         {t.filterMastered}
@@ -460,7 +493,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                       onToggleBookmark(activeWord.id);
                     }}
                     className={`p-2 rounded-xl transition ${
-                      stats.bookmarkedWords.includes(activeWord.id)
+                      isCurrentWordBookmarked
                         ? 'text-pink-500 bg-pink-50 dark:bg-pink-950/50'
                         : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
@@ -468,7 +501,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                   >
                     <Bookmark
                       className={`w-5 h-5 ${
-                        stats.bookmarkedWords.includes(activeWord.id) ? 'fill-pink-500' : ''
+                      isCurrentWordBookmarked ? 'fill-pink-500' : ''  
                       }`}
                     />
                   </button>
