@@ -180,18 +180,6 @@ const topics: { category: string; entries: VocabularyEntry[] }[] = [
       ['Public place', '/ˈpʌblɪk pleɪs/', 'Nơi công cộng', 'noun', 'Please keep this public place clean.', 'Vui lòng giữ nơi công cộng này sạch sẽ.'],
     ],
   },
-  {
-    category: 'kiem tra bai cu a Long',
-    entries: [
-      ['Platform', '/ˈplætfɔːrm/', 'Sân ga', 'noun', 'Our train leaves from platform three.', 'Tàu của chúng tôi rời ga từ sân ga số ba.'],
-      ['Station', '/ˈsteɪʃən/', 'Nhà ga', 'noun', 'The station is next to the bus stop.', 'Nhà ga nằm cạnh trạm xe buýt.'],
-      ['Map', '/mæp/', 'Bản đồ', 'noun', 'The map shows the way to the market.', 'Bản đồ chỉ đường đến khu chợ.'],
-      ['Market', '/ˈmɑːrkɪt/', 'Chợ', 'noun', 'We buy fresh fruit at the market.', 'Chúng tôi mua trái cây tươi ở chợ.'],
-      ['Price', '/praɪs/', 'Giá tiền', 'noun', 'What is the price of this ticket?', 'Vé này giá bao nhiêu?'],
-      ['Travel', '/ˈtrævəl/', 'Du lịch, đi lại', 'verb', 'We travel to the city by train.', 'Chúng tôi đi đến thành phố bằng tàu hỏa.'],
-      ['Straight ahead', '/streɪt əˈhed/', 'Đi thẳng phía trước', 'phrase', 'Walk straight ahead to find the hotel.', 'Đi thẳng phía trước để tìm khách sạn.'],
-    ],
-  },
 ];
 
 export const ADDITIONAL_VOCABULARY: VocabWord[] = topics.flatMap(({ category, entries }) => {
