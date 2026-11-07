@@ -160,18 +160,6 @@ export const MODULES: LearningModule[] = [
     totalWords: 20,
   },
   {
-    id: 'kiem_tra_bai_cu_a_long',
-    title: 'kiem tra bai cu a Long',
-    titleVi: 'Kiểm tra bài cũ a Long',
-    description: 'Review vocabulary for public transport, travel, and everyday purchases.',
-    descriptionVi: 'Ôn tập từ vựng về giao thông công cộng, du lịch và mua sắm hằng ngày.',
-    category: 'kiem tra bai cu a Long',
-    icon: '🚌',
-    level: 'A2',
-    color: 'from-teal-500 to-cyan-600',
-    totalWords: 20,
-  },
-  {
     id: 'machine_learning',
     title: 'Machine Learning',
     titleVi: 'Học máy',
