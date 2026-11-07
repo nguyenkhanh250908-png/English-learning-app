@@ -1,6 +1,6 @@
 import { QuizQuestion, VocabWord } from '../types';
 
-const EXCLUDED_CATEGORIES = new Set(['kiem tra bai cu a Long', 'Machine Learning']);
+const EXCLUDED_CATEGORIES = new Set(['Machine Learning']);
 
 function shuffle<T>(items: T[]): T[] {
   const result = [...items];
